@@ -1,51 +1,25 @@
-from azure.ai.vision.imageanalysis import ImageAnalysisClient
-from azure.ai.vision.imageanalysis.models import VisualFeatures
-from azure.core.credentials import AzureKeyCredential
+from azure.cognitiveservices.vision.computervision import ComputerVisionClient
+from msrest.authentication import CognitiveServicesCredentials
+from confidential import cfdt
+endpoint = cfdt('endpoint')
+subscription_key = cfdt('key')
 
-def cfdt(which):
-    if cfdt == 'endpoint':
-        return 'https://mlplab1.cognitiveservices.azure.com/'
+def read_image(which,image_address, endpoint=endpoint, subscription_key=subscription_key):
+    
+    client = ComputerVisionClient(endpoint, CognitiveServicesCredentials(subscription_key))
+
+    with open(image_address, "rb") as image_stream:
+        description_results = client.describe_image_in_stream(image_stream)
+
+    print("Description of image:")
+    if which == 'caption':
+        for caption in description_results.captions:
+            return caption.text
+        
     else:
-        return '277c6f696672406599fd815148cd2cff'
-
-def read_image(image_address):
-    with open(image_address, "rb") as f:
-        image_data = f.read()
-        return image_data
-
-def get_captions(image_data):
-    client = ImageAnalysisClient(
-        endpoint=cfdt('endpoint'),
-        credential=AzureKeyCredential(cfdt('key'))
-    )
-
-    # Get a caption for the image. This will be a synchronously (blocking) call.
-    result = client.analyze(
-        image_url=image_data,
-        visual_features=[VisualFeatures.CAPTION],
-        gender_neutral_caption=True,  # Optional (default is False)
-    )
-    if result.caption is not None:
-        print("Caption: ")
-        return result.caption.text
-
-def get_tags(image_data):
-    client = ImageAnalysisClient(
-        endpoint=cfdt('endpoint'),
-        credential=AzureKeyCredential(cfdt('key'))
-    )
-
-    result = client.analyze(
-        image_url=image_data,
-        visual_features=[VisualFeatures.TAGS],
-        gender_neutral_caption=True,  # Optional (default is False)
-    )
-
-    if result.tags is not None:
-        print(" Tags:")
-        for tag in result.tags.list:
-            return tag.name
-
+        return description_results.tags
+        #for tag in description_results.tags:
+            #return tag
 
 
 import os
@@ -166,24 +140,32 @@ def upload():
     if request.method == 'POST' and 'file' in request.files:
         f = request.files.get('file')
         filename = rename_image(f.filename)
-        filepath = os.path.join(current_app.config['ALBUMY_UPLOAD_PATH'], filename)
         f.save(os.path.join(current_app.config['ALBUMY_UPLOAD_PATH'], filename))
+        filepath = os.path.join(current_app.config['ALBUMY_UPLOAD_PATH'], filename)
         filename_s = resize_image(f, filename, current_app.config['ALBUMY_PHOTO_SIZE']['small'])
         filename_m = resize_image(f, filename, current_app.config['ALBUMY_PHOTO_SIZE']['medium'])
 
-        image_data = read_image(filepath)
-        description = get_captions(image_data)
-        tag_name = get_tags(image_data)
+        caption = read_image('caption', filepath)
+        tag_name = read_image('tag', filepath)
 
         photo = Photo(
             filename=filename,
             filename_s=filename_s,
             filename_m=filename_m,
-            description=description, 
+            description=caption, 
             author=current_user._get_current_object()
         )
 
+        """
         if tag_name:
+            tag = Tag.query.filter_by(name=tag_name).first()
+            if tag is None:
+                tag = Tag(name=tag_name)
+                db.session.add(tag)
+            photo.tags.append(tag)
+        """
+
+        for tag_name in tag_name:
             tag = Tag.query.filter_by(name=tag_name).first()
             if tag is None:
                 tag = Tag(name=tag_name)
@@ -193,7 +175,6 @@ def upload():
 
         db.session.add(photo)
         db.session.commit()
-        flash('Photo uploaded.', 'success')
 
     return render_template('main/upload.html')
 
