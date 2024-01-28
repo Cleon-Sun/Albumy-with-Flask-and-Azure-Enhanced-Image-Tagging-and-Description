@@ -1,10 +1,53 @@
-# -*- coding: utf-8 -*-
-"""
-    :author: Grey Li (李辉)
-    :url: http://greyli.com
-    :copyright: © 2018 Grey Li <withlihui@gmail.com>
-    :license: MIT, see LICENSE for more details.
-"""
+from azure.ai.vision.imageanalysis import ImageAnalysisClient
+from azure.ai.vision.imageanalysis.models import VisualFeatures
+from azure.core.credentials import AzureKeyCredential
+
+def cfdt(which):
+    if cfdt == 'endpoint':
+        return 'https://mlplab1.cognitiveservices.azure.com/'
+    else:
+        return '277c6f696672406599fd815148cd2cff'
+
+def read_image(image_address):
+    with open(image_address, "rb") as f:
+        image_data = f.read()
+        return image_data
+
+def get_captions(image_data):
+    client = ImageAnalysisClient(
+        endpoint=cfdt('endpoint'),
+        credential=AzureKeyCredential(cfdt('key'))
+    )
+
+    # Get a caption for the image. This will be a synchronously (blocking) call.
+    result = client.analyze(
+        image_url=image_data,
+        visual_features=[VisualFeatures.CAPTION],
+        gender_neutral_caption=True,  # Optional (default is False)
+    )
+    if result.caption is not None:
+        print("Caption: ")
+        return result.caption.text
+
+def get_tags(image_data):
+    client = ImageAnalysisClient(
+        endpoint=cfdt('endpoint'),
+        credential=AzureKeyCredential(cfdt('key'))
+    )
+
+    result = client.analyze(
+        image_url=image_data,
+        visual_features=[VisualFeatures.TAGS],
+        gender_neutral_caption=True,  # Optional (default is False)
+    )
+
+    if result.tags is not None:
+        print(" Tags:")
+        for tag in result.tags.list:
+            return tag.name
+
+
+
 import os
 
 from flask import render_template, flash, redirect, url_for, current_app, \
@@ -18,6 +61,7 @@ from albumy.forms.main import DescriptionForm, TagForm, CommentForm
 from albumy.models import User, Photo, Tag, Follow, Collect, Comment, Notification
 from albumy.notifications import push_comment_notification, push_collect_notification
 from albumy.utils import rename_image, resize_image, redirect_back, flash_errors
+import requests
 
 main_bp = Blueprint('main', __name__)
 
@@ -122,17 +166,35 @@ def upload():
     if request.method == 'POST' and 'file' in request.files:
         f = request.files.get('file')
         filename = rename_image(f.filename)
+        filepath = os.path.join(current_app.config['ALBUMY_UPLOAD_PATH'], filename)
         f.save(os.path.join(current_app.config['ALBUMY_UPLOAD_PATH'], filename))
         filename_s = resize_image(f, filename, current_app.config['ALBUMY_PHOTO_SIZE']['small'])
         filename_m = resize_image(f, filename, current_app.config['ALBUMY_PHOTO_SIZE']['medium'])
+
+        image_data = read_image(filepath)
+        description = get_captions(image_data)
+        tag_name = get_tags(image_data)
+
         photo = Photo(
             filename=filename,
             filename_s=filename_s,
             filename_m=filename_m,
+            description=description, 
             author=current_user._get_current_object()
         )
+
+        if tag_name:
+            tag = Tag.query.filter_by(name=tag_name).first()
+            if tag is None:
+                tag = Tag(name=tag_name)
+                db.session.add(tag)
+            photo.tags.append(tag)
+
+
         db.session.add(photo)
         db.session.commit()
+        flash('Photo uploaded.', 'success')
+
     return render_template('main/upload.html')
 
 
