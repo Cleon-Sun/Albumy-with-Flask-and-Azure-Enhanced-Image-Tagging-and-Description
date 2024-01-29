@@ -1,44 +1,24 @@
-# Albumy
+# How you can run this system:
+In the terminal, please run:
 
-*Capture and share every wonderful moment.*
-
-> Example application for *[Python Web Development with Flask](https://helloflask.com/en/book/1)* (《[Flask Web 开发实战](https://helloflask.com/book/1)》).
-
-Demo: http://albumy.helloflask.com
-
-![Screenshot](https://helloflask.com/screenshots/albumy.png)
-
-## Installation
-
-clone:
 ```
-$ git clone https://github.com/greyli/albumy.git
-$ cd albumy
+cd albumy/blueprints
+export endpoint='where_you_should_input_the_endpoint_for_ML'
+export akey='here_you_should_input_the_key_for_ML'
+flask run
 ```
-create & activate virtual env then install dependency:
 
-with venv/virtualenv + pip:
-```
-$ python -m venv env  # use `virtualenv env` for Python2, use `python3 ...` for Python3 on Linux & macOS
-$ source env/bin/activate  # use `env\Scripts\activate` on Windows
-$ pip install -r requirements.txt
-```
-or with Pipenv:
-```
-$ pipenv install --dev
-$ pipenv shell
-```
-generate fake data then run:
-```
-$ flask forge
-$ flask run
-* Running on http://127.0.0.1:5000/
-```
-Test account:
-* email: `admin@helloflask.com`
-* password: `helloflask`
+then, you should be able to see the address of the system and open it in a browser
 
-## License
+# How to get your own endpoint and key to use the ML features in the system
 
-This project is licensed under the MIT License (see the
-[LICENSE](LICENSE) file for details).
+Please visit Microsoft Azure to subscripe to this service
+
+# How to add additional libraries to requirements.txt for further extension
+
+Please add more lines in the requirements.txt and run in the terminal
+
+```
+cd albumy
+pip install -r requirements.txt
+```
