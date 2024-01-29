@@ -1,10 +1,18 @@
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 from msrest.authentication import CognitiveServicesCredentials
-from confidential import cfdt
-endpoint = cfdt('endpoint')
-subscription_key = cfdt('key')
+import configparser
+import os
 
-def read_image(which,image_address, endpoint=endpoint, subscription_key=subscription_key):
+
+
+
+def read_image(which,image_address, config_address='config.ini'):
+    config = configparser.ConfigParser()
+    config.read(config_address)
+    endpoint = os.getenv('endpoint', 'NA')
+    subscription_key = os.getenv('akey','NA')
+    print(endpoint)
+    print(subscription_key)
     
     client = ComputerVisionClient(endpoint, CognitiveServicesCredentials(subscription_key))
 
